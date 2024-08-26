@@ -1,0 +1,238 @@
+import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:math';
+
+void main() {
+  runApp(MyGameApp());
+}
+
+class MyGameApp extends StatefulWidget {
+  @override
+  _MyGameAppState createState() => _MyGameAppState();
+}
+
+class _MyGameAppState extends State<MyGameApp> {
+  List<String> gameSeq = [];
+  List<String> userSeq = [];
+  List<String> btns = ["yellow", "green", "red", "purple"];
+  bool started = false;
+  int level = 0;
+  String levelText = "Press anywhere to start game!";
+  Map<String, GlobalKey<_ColorButtonState>> buttonKeys = {
+    "red": GlobalKey<_ColorButtonState>(),
+    "green": GlobalKey<_ColorButtonState>(),
+    "yellow": GlobalKey<_ColorButtonState>(),
+    "purple": GlobalKey<_ColorButtonState>(),
+  };
+
+  void startGame() {
+    if (!started) {
+      setState(() {
+        started = true;
+        level = 0;
+        gameSeq.clear();
+        userSeq.clear();
+      });
+      levelUp();
+    }
+  }
+
+  void levelUp() {
+    setState(() {
+      level++;
+      levelText = "Level $level";
+    });
+    userSeq.clear();
+    addRandomColorToSequence();
+    playSequence();
+  }
+
+  void addRandomColorToSequence() {
+    int rdmIdx = Random().nextInt(btns.length);
+    String rdmColor = btns[rdmIdx];
+    gameSeq.add(rdmColor);
+  }
+
+  Future<void> playSequence() async {
+    for (String color in gameSeq) {
+      await buttonKeys[color]?.currentState?.flash();
+      await Future.delayed(Duration(milliseconds: 500));
+    }
+  }
+
+  void checkSeq(int idx) {
+    if (userSeq[idx] == gameSeq[idx]) {
+      if (userSeq.length == gameSeq.length) {
+        // Delay before going to next level
+        Future.delayed(Duration(milliseconds: 200), () {
+          levelUp();
+        });
+      }
+    } else {
+      showGameOver();
+    }
+  }
+
+  void onButtonPressed(String color) {
+    userSeq.add(color);
+    buttonKeys[color]?.currentState?.flash();
+    checkSeq(userSeq.length - 1);
+  }
+
+  void showGameOver() {
+    setState(() {
+      started = false;
+      userSeq.clear();
+      gameSeq.clear();
+      level = 0;
+      levelText = "Game Over! Press anywhere to start again.";
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: GestureDetector(
+        onTap: startGame,
+        child: Scaffold(
+          body: Container(
+            height: double.infinity,
+            width: double.infinity,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF178989),
+                  Color(0xFFEF7D20),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Simon Game',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 32,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  levelText,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 20),
+                Container(
+                  height: 400,
+                  width: 400,
+                  child: GridView.count(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    padding: EdgeInsets.all(10),
+                    children: [
+                      ColorButton(
+                          key: buttonKeys["red"]!,
+                          color: "red",
+                          onPressed: () => onButtonPressed("red")),
+                      ColorButton(
+                          key: buttonKeys["green"]!,
+                          color: "green",
+                          onPressed: () => onButtonPressed("green")),
+                      ColorButton(
+                          key: buttonKeys["yellow"]!,
+                          color: "yellow",
+                          onPressed: () => onButtonPressed("yellow")),
+                      ColorButton(
+                          key: buttonKeys["purple"]!,
+                          color: "purple",
+                          onPressed: () => onButtonPressed("purple")),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ColorButton extends StatefulWidget {
+  final String color;
+  final VoidCallback onPressed;
+
+  ColorButton({required Key key, required this.color, required this.onPressed})
+      : super(key: key);
+
+  @override
+  _ColorButtonState createState() => _ColorButtonState();
+}
+
+class _ColorButtonState extends State<ColorButton> {
+  Color currentColor;
+
+  _ColorButtonState() : currentColor = Colors.transparent;
+
+  @override
+  void initState() {
+    super.initState();
+    currentColor = getOriginalColor(widget.color);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        widget.onPressed();
+        flash();
+      },
+      child: Container(
+        height: 180,
+        width: 180,
+        decoration: BoxDecoration(
+          color: currentColor,
+          borderRadius: BorderRadius.circular(40),
+          border: Border.all(color: Colors.black, width: 5),
+        ),
+      ),
+    );
+  }
+
+  Future<void> flash() async {
+    setState(() {
+      currentColor = Colors.white; // Flashing color
+    });
+
+    await Future.delayed(Duration(milliseconds: 200)); // Flash duration
+
+    setState(() {
+      currentColor = getOriginalColor(widget.color); // Reset to original color
+    });
+  }
+
+  Color getOriginalColor(String color) {
+    switch (color) {
+      case "red":
+        return Colors.red;
+      case "green":
+        return Colors.green;
+      case "yellow":
+        return Colors.yellow;
+      case "purple":
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+}
