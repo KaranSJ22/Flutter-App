@@ -1,1 +1,2 @@
-# Flutter-App
+# Simon Says
+**Game built using Flutter**
